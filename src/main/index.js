@@ -102,7 +102,7 @@ app.whenReady().then(() => {
   // Crear Tray Icon (Icono en la barra de reloj)
   // Nota: Necesitás un icon.png en assets. Por ahora usará el default si falla.
   try {
-    tray = new Tray(path.join(__dirname, "../renderer/assets/sprites.png"));
+    tray = new Tray(path.join(__dirname, "../renderer/assets/cheese.png"));
     const contextMenu = Menu.buildFromTemplate([
       { label: "Despertar a Paco", click: () => mainWindow.show() },
       { label: "Dormir (Salir)", click: () => app.quit() },

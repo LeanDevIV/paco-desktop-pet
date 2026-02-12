@@ -1,21 +1,37 @@
 {
   "name": "paco-desktop-pet",
   "version": "1.0.0",
-  "description": "",
+  "description": "Paco Pet Desktop",
   "main": "src/main/index.js",
-  "directories": {
-    "doc": "docs"
-  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "electron ."
+    "start": "electron .",
+    "dist": "npx electron-packager .  --platform=win32 --arch=x64 --icon=src/renderer/assets/cheese.ico --out=dist --overwrite"
+  },
+  "build": {
+    "appId": "com.sentey.paco-desktop-pet",
+    "productName": "Paco Pet",
+    "win": {
+      "target": "nsis",
+      "icon": "src/renderer/assets/cheese.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ]
   },
   "keywords": [],
-  "author": "",
+  "author": "Sentey",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "electron": "^40.4.0"
+    "electron": "^40.4.0",
+    "electron-builder": "^26.0.0"
   },
   "dependencies": {
     "image-size": "^2.0.2"
