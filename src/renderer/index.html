@@ -17,90 +17,96 @@
 
       /* 1. El marco (donde vive Paco) */
       #paco-container {
-        width: 32px;
-        height: 32px;
+        /* Default size */
+        width: 48px;
+        height: 48px;
         overflow: hidden;
         position: relative;
         image-rendering: pixelated;
-        transform: scale(4);
-        /* Debug styles removed */
+        transform: scale(3);
         background-color: transparent;
+        transition:
+          width 0.2s,
+          height 0.2s; /* Smooth visual transition */
       }
 
-      /* 2. La imagen adentro del marco */
-      .sprite {
-        width: 384px; /* Ancho total real de la imagen */
-        height: 128px; /* Alto total real de la imagen */
-        background-image: url("./assets/sprites.png");
-        background-repeat: no-repeat;
-        /* IMPORTANTE: Sacamos el background-size porcentual */
-        background-size: auto;
-        display: block;
-      }
-      /* La imagen del Sprite */
+      /* 2. La imagen adentro (El Sprite) */
       .sprite {
         width: 100%;
         height: 100%;
-        background-image: url("./assets/sprites.png");
         background-repeat: no-repeat;
-        background-size: 300% 400%; /* 3 columnas (300%), 4 filas (400%) */
+        display: block;
       }
 
-      /* Animación de Caminar */
-      /* steps(3) significa que salta en 3 pasos, no desliza suave */
-      .walk-anim {
-        animation: walk-cycle 0.6s steps(3) infinite;
+      /* --- ESTADOS (Cambian la imagen y el tamaño) --- */
+
+      /* WALKING / IDLE (Usa la hoja principal) */
+      .state-walking,
+      .state-idle {
+        background-image: url("./assets/sprites.png");
+        /* 3 columns = 300%, 4 rows = 400% based on 48x48 frame */
+        background-size: 300% 400%;
       }
+
+      /* EATING (Nueva hoja) */
+      .state-eating {
+        background-image: url("./assets/eat.png");
+        /* Tira horizontal de 4 frames (4 * 100% width?) */
+        /* Si el container es 48x48 y la imagen es 192x48 */
+        /* background-size: 400% 100% (4 columnas, 1 fila) */
+        background-size: 400% 100%;
+        animation: eat-cycle 0.5s steps(4) infinite;
+      }
+
+      /* SLEEPING (Nueva hoja) */
+      .state-sleeping {
+        background-image: url("./assets/sleep.png");
+        background-size: 100% 100%;
+        width: 32px !important;
+        height: 32px !important;
+        /* Center in container if container is larger? Or rely on JS to resize container? */
+        /* For now, force sprite size. Container might have empty space if not resized. */
+        margin: 8px; /* Center 32px in 48px container roughly (48-32)/2 = 8 */
+      }
+
       /* --- ANIMACIONES --- */
 
-      /* Animación de Caminar (3 frames) */
-      .walk-anim {
-        animation: walk-cycle 0.5s steps(3) infinite;
+      /* Caminar */
+      .state-walking {
+        animation: walk-cycle 0.6s steps(3) infinite;
       }
 
       @keyframes walk-cycle {
-        /* Esto mueve la imagen de 0 a -96px (32*3) para mostrar los 3 frames de la animación */
         from {
           background-position-x: 0;
         }
         to {
-          background-position-x: -96px;
-        }
-      }
-      /* Efecto de comer: Vibración rápida */
-      @keyframes munch {
-        0% {
-          transform: scale(3) translateY(0);
-        }
-        25% {
-          transform: scale(3.2) translateY(-2px);
-        }
-        50% {
-          transform: scale(3) translateY(0);
-        }
-        75% {
-          transform: scale(3.2) translateY(-2px);
-        }
-        100% {
-          transform: scale(3) translateY(0);
+          background-position-x: -144px;
         }
       }
 
-      .eating {
-        animation: munch 0.2s ease-in-out infinite;
-      } /* --- DIRECCIONES (Filas) --- */
-      /* Cambiamos la posición Y para elegir qué fila ver */
+      @keyframes eat-cycle {
+        from {
+          background-position-x: 0;
+        }
+        to {
+          background-position-x: -192px;
+        } /* 4 frames * 48px */
+      }
+
+      /* --- DIRECCIONES (Solo para Walking/Idle) --- */
+      /* Altura de frame = 48px */
       .facing-down {
         background-position-y: 0px;
       }
       .facing-left {
-        background-position-y: -32px;
+        background-position-y: -48px;
       }
       .facing-right {
-        background-position-y: -64px;
+        background-position-y: -96px;
       }
       .facing-up {
-        background-position-y: -96px;
+        background-position-y: -144px;
       }
     </style>
   </head>

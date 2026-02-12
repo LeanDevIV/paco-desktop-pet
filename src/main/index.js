@@ -94,9 +94,22 @@ ipcMain.on("paco-move", (event, { x, y }) => {
   if (!mainWindow) return;
   try {
     const bounds = mainWindow.getBounds();
+    const { height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
+
+    // Calculate new positions
+    let newX = bounds.x + x;
+    let newY = bounds.y + y;
+
+    // Clamp Y to bottom 150px (e.g. screenHeight - 150 to screenHeight - height)
+    const minY = screenHeight - 150;
+    const maxY = screenHeight - bounds.height;
+
+    if (newY < minY) newY = minY;
+    if (newY > maxY) newY = maxY;
+
     mainWindow.setBounds({
-      x: Math.round(bounds.x + x),
-      y: Math.round(bounds.y + y),
+      x: Math.round(newX),
+      y: Math.round(newY),
       width: bounds.width,
       height: bounds.height,
     });

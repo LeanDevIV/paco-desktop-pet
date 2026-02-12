@@ -3,19 +3,20 @@ const { ipcRenderer } = require("electron");
 
 class PetBrain {
   constructor() {
-    this.state = "IDLE"; // IDLE, WALKING, EATING
+    this.visualState = "IDLE"; // IDLE, WALKING, EATING, SLEEPING
+    this.movementMode = "IDLE"; // IDLE, WALKING
     this.timers = {};
-    this.position = { x: 0, y: 0 };
     this.direction = { x: 0, y: 0 };
 
     // Config
-    this.DECISION_RATE = 2000;
+    this.DECISION_RATE = 2500;
     this.MOVE_SPEED = 5;
   }
 
   init() {
     console.log("🧠 PetBrain: Online");
     this.sprite = document.getElementById("paco-sprite");
+    // this.container = document.getElementById("paco-container");
     this.startLifeCycle();
   }
 
@@ -28,55 +29,73 @@ class PetBrain {
   }
 
   makeDecision() {
-    if (this.state === "EATING") return;
+    if (this.visualState === "EATING") return;
 
     const rand = Math.random();
-    // 40% chance to walk, 60% idle
-    if (rand > 0.6) {
-      this.changeState("WALKING");
+
+    // 10% Sleep, 40% Walk, 50% Idle
+    if (rand < 0.1) {
+      this.setVisualState("SLEEPING");
+      this.movementMode = "IDLE";
+    } else if (rand < 0.5) {
+      this.setVisualState("WALKING");
+      this.movementMode = "WALKING";
+      this.pickRandomDirection();
     } else {
-      this.changeState("IDLE");
+      this.setVisualState("IDLE");
+      this.movementMode = "IDLE";
     }
   }
 
-  changeState(newState) {
-    if (this.state === newState) return;
+  setVisualState(newState) {
+    if (this.visualState === newState) return;
+    console.log(`Visual: ${this.visualState} -> ${newState}`);
+    this.visualState = newState;
+    this.updateClasses();
+  }
 
-    console.log(`State change: ${this.state} -> ${newState}`);
-    this.state = newState;
+  updateClasses() {
+    // Clear all state classes
+    this.sprite.classList.remove(
+      "state-idle",
+      "state-walking",
+      "state-eating",
+      "state-sleeping",
+    );
 
-    if (newState === "WALKING") {
-      this.sprite.classList.add("walk-anim");
-      this.pickRandomDirection();
-    } else if (newState === "IDLE") {
-      this.sprite.classList.remove("walk-anim");
-    } else if (newState === "EATING") {
-      this.sprite.classList.remove("walk-anim");
-      // Add visual feedback for eating
-      this.sprite.classList.add("eating");
+    // Add current state class
+    this.sprite.classList.add(`state-${this.visualState.toLowerCase()}`);
+
+    // Handle direction classes
+    if (this.visualState === "WALKING" || this.visualState === "IDLE") {
+      this.applyDirectionClasses();
+    } else {
+      this.sprite.classList.remove(
+        "facing-up",
+        "facing-down",
+        "facing-left",
+        "facing-right",
+      );
     }
   }
 
   pickRandomDirection() {
-    // Random direction: -1, 0, or 1 for both axes
-    // Filter out 0,0 to ensure some movement if walking
     let x = 0,
       y = 0;
     while (x === 0 && y === 0) {
       x = Math.random() > 0.5 ? 1 : -1;
       y = Math.random() > 0.5 ? 1 : -1;
 
-      // Occasionally allow partial axis movement (just X or just Y)
       if (Math.random() > 0.8) x = 0;
       else if (Math.random() > 0.8) y = 0;
     }
-
     this.direction = { x, y };
-    this.updateSpriteOrientation();
+    if (this.visualState === "WALKING" || this.visualState === "IDLE") {
+      this.applyDirectionClasses();
+    }
   }
 
-  updateSpriteOrientation() {
-    // Clear previous direction classes
+  applyDirectionClasses() {
     this.sprite.classList.remove(
       "facing-up",
       "facing-down",
@@ -85,12 +104,6 @@ class PetBrain {
     );
 
     const { x, y } = this.direction;
-
-    // Determine primary facing direction
-    // If moving horizontally, face left/right
-    // If moving vertically, face up/down
-    // If moving diagonally, prefer horizontal facing (arbitrary choice)
-
     if (x !== 0) {
       if (x > 0) this.sprite.classList.add("facing-right");
       else this.sprite.classList.add("facing-left");
@@ -98,40 +111,37 @@ class PetBrain {
       if (y > 0) this.sprite.classList.add("facing-down");
       else this.sprite.classList.add("facing-up");
     } else {
-      // Default fallback
       this.sprite.classList.add("facing-down");
     }
   }
 
   updatePhysics() {
-    if (this.state !== "WALKING") return;
+    if (this.movementMode !== "WALKING") return;
 
-    // Calculate movement delta
     const delta = {
       x: this.direction.x * this.MOVE_SPEED,
       y: this.direction.y * this.MOVE_SPEED,
     };
 
-    // Send to main process
     ipcRenderer.send("paco-move", delta);
   }
 
   interact() {
-    console.log("Interact triggered!");
-    if (this.state === "EATING") return;
+    console.log("Interact: Munching!");
+    const previousMovementMode = this.movementMode;
+    this.setVisualState("EATING");
 
-    // Force EATING state
-    this.changeState("EATING");
-    this.sprite.classList.add("facing-down"); // Face user when eating
-
-    // Stop moving immediately
-    this.direction = { x: 0, y: 0 };
-
-    // Reset after animation
     setTimeout(() => {
-      this.sprite.classList.remove("eating");
-      this.makeDecision(); // Pick new state immediately
-    }, 2000); // 2 seconds interaction
+      if (this.visualState === "EATING") {
+        // Revert visual state to match the current movement mode
+        // If movement mode is WALKING, we go to WALKING visual
+        // If IDLE, we go to IDLE visual
+        // Note: setVisualState handles updateClasses
+        this.setVisualState(
+          this.movementMode === "WALKING" ? "WALKING" : "IDLE",
+        );
+      }
+    }, 2000);
   }
 }
 
