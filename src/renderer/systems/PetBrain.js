@@ -1,123 +1,137 @@
 // src/renderer/systems/PetBrain.js
 const { ipcRenderer } = require("electron");
-const { PacoError, ErrorCategories } = require("../../shared/PacoError");
 
 class PetBrain {
   constructor() {
-    this.state = "IDLE"; // Estados: IDLE, WALKING, INTERACTING
+    this.state = "IDLE"; // IDLE, WALKING, EATING
     this.timers = {};
-    this.position = { x: 0, y: 0 }; // Se sincronizará con el main
+    this.position = { x: 0, y: 0 };
+    this.direction = { x: 0, y: 0 };
 
-    // Configuración de comportamiento
-    this.DECISION_RATE = 2000; // Cada cuánto decide qué hacer (ms)
-    this.MOVE_SPEED = 5; // Pixeles por tick
+    // Config
+    this.DECISION_RATE = 2000;
+    this.MOVE_SPEED = 5;
   }
 
   init() {
-    console.log("🧠 Cerebro de Paco: Online");
+    console.log("🧠 PetBrain: Online");
+    this.sprite = document.getElementById("paco-sprite");
     this.startLifeCycle();
-
-    // Escuchar posición inicial del main (necesitamos pedirla primero)
-    // Por ahora asumimos que el main nos manda updates o nosotros mandamos deltas.
   }
 
   startLifeCycle() {
-    // Loop principal de decisiones
     this.timers.decision = setInterval(
       () => this.makeDecision(),
       this.DECISION_RATE,
     );
-
-    // Loop de animación/física (más rápido)
     this.timers.physics = setInterval(() => this.updatePhysics(), 50);
   }
 
   makeDecision() {
-    if (this.state === "INTERACTING") return; // Si lo estás tocando, no decide nada
+    if (this.state === "EATING") return;
 
     const rand = Math.random();
-
-    // 30% chance de caminar, 70% de quedarse quieto respirando
-    if (rand > 0.7) {
+    // 40% chance to walk, 60% idle
+    if (rand > 0.6) {
       this.changeState("WALKING");
-      // Elegir dirección aleatoria (-1 izquierda/arriba, 1 derecha/abajo)
-      this.direction = {
-        x: Math.random() > 0.5 ? 1 : -1,
-        y: Math.random() > 0.5 ? 1 : -1,
-      };
     } else {
       this.changeState("IDLE");
     }
   }
+
   changeState(newState) {
-    // console.log(`Paco cambia de ${this.state} a ${newState}`);
+    if (this.state === newState) return;
+
+    console.log(`State change: ${this.state} -> ${newState}`);
     this.state = newState;
 
-    const sprite = document.getElementById("paco-sprite");
-
     if (newState === "WALKING") {
-      sprite.classList.add("walk-anim");
-      this.updateDirectionSprite(); // Orientarlo apenas empieza a caminar
+      this.sprite.classList.add("walk-anim");
+      this.pickRandomDirection();
     } else if (newState === "IDLE") {
-      sprite.classList.remove("walk-anim");
-      // Opcional: Volver a facing-down o dejarlo como quedó
-      sprite.className = "sprite facing-down";
-    } else if (newState === "INTERACTING") {
-      sprite.classList.remove("walk-anim");
-      // Hack visual para comer: Vibrar
-      // (Podrías agregar una clase CSS .shake aquí)
+      this.sprite.classList.remove("walk-anim");
+    } else if (newState === "EATING") {
+      this.sprite.classList.remove("walk-anim");
+      // Add visual feedback for eating
+      this.sprite.classList.add("eating");
     }
   }
 
-  // Nuevo método para decidir qué fila del sprite usar
-  updateDirectionSprite() {
-    const sprite = document.getElementById("paco-sprite");
+  pickRandomDirection() {
+    // Random direction: -1, 0, or 1 for both axes
+    // Filter out 0,0 to ensure some movement if walking
+    let x = 0,
+      y = 0;
+    while (x === 0 && y === 0) {
+      x = Math.random() > 0.5 ? 1 : -1;
+      y = Math.random() > 0.5 ? 1 : -1;
 
-    // Limpiar direcciones anteriores
-    sprite.classList.remove(
+      // Occasionally allow partial axis movement (just X or just Y)
+      if (Math.random() > 0.8) x = 0;
+      else if (Math.random() > 0.8) y = 0;
+    }
+
+    this.direction = { x, y };
+    this.updateSpriteOrientation();
+  }
+
+  updateSpriteOrientation() {
+    // Clear previous direction classes
+    this.sprite.classList.remove(
       "facing-up",
       "facing-down",
       "facing-left",
       "facing-right",
     );
 
-    // Prioridad: Si se mueve en X, mira a los lados. Si solo se mueve en Y, mira arriba/abajo.
-    if (Math.abs(this.direction.x) > 0) {
-      if (this.direction.x > 0) sprite.classList.add("facing-right");
-      else sprite.classList.add("facing-left");
+    const { x, y } = this.direction;
+
+    // Determine primary facing direction
+    // If moving horizontally, face left/right
+    // If moving vertically, face up/down
+    // If moving diagonally, prefer horizontal facing (arbitrary choice)
+
+    if (x !== 0) {
+      if (x > 0) this.sprite.classList.add("facing-right");
+      else this.sprite.classList.add("facing-left");
+    } else if (y !== 0) {
+      if (y > 0) this.sprite.classList.add("facing-down");
+      else this.sprite.classList.add("facing-up");
     } else {
-      if (this.direction.y > 0)
-        sprite.classList.add("facing-down"); // Y positivo es abajo en pantallas
-      else sprite.classList.add("facing-up");
+      // Default fallback
+      this.sprite.classList.add("facing-down");
     }
   }
 
   updatePhysics() {
-    if (this.state === "WALKING") {
-      try {
-        // Actualizamos el sprite por si cambió de rumbo repentinamente
-        this.updateDirectionSprite();
+    if (this.state !== "WALKING") return;
 
-        ipcRenderer.send("paco-move", {
-          x: this.direction.x * this.MOVE_SPEED,
-          y: this.direction.y * this.MOVE_SPEED,
-        });
-      } catch (error) {
-        // ... error handling
-      }
-    }
+    // Calculate movement delta
+    const delta = {
+      x: this.direction.x * this.MOVE_SPEED,
+      y: this.direction.y * this.MOVE_SPEED,
+    };
+
+    // Send to main process
+    ipcRenderer.send("paco-move", delta);
   }
 
   interact() {
-    this.changeState("INTERACTING");
-    const sprite = document.getElementById("paco-sprite");
+    console.log("Interact triggered!");
+    if (this.state === "EATING") return;
 
-    sprite.className = "sprite facing-down eating"; // Se pone de frente y vibra
+    // Force EATING state
+    this.changeState("EATING");
+    this.sprite.classList.add("facing-down"); // Face user when eating
 
+    // Stop moving immediately
+    this.direction = { x: 0, y: 0 };
+
+    // Reset after animation
     setTimeout(() => {
-      sprite.classList.remove("eating");
-      this.makeDecision();
-    }, 1500); // Come por un segundo y medio
+      this.sprite.classList.remove("eating");
+      this.makeDecision(); // Pick new state immediately
+    }, 2000); // 2 seconds interaction
   }
 }
 

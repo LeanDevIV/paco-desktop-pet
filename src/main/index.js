@@ -89,34 +89,19 @@ app.on("window-all-closed", () => {
 // --- IPC HANDLERS (La comunicación) ---
 
 // Escuchar petición de movimiento desde el cerebro
-ipcMain.on("paco-move", (event, delta) => {
+// Escuchar la orden de movimiento desde el cerebro
+ipcMain.on("paco-move", (event, { x, y }) => {
   if (!mainWindow) return;
-
   try {
     const bounds = mainWindow.getBounds();
-    const { width: screenWidth, height: screenHeight } =
-      screen.getPrimaryDisplay().workAreaSize;
-
-    let newX = bounds.x + delta.x;
-    let newY = bounds.y + delta.y;
-
-    // Lógica de rebote básica (para que no se escape de la pantalla)
-    // Si toca un borde, no avanza en esa dirección (el cerebro decidirá cambiar rumbo después)
-    if (newX < 0) newX = 0;
-    if (newX + bounds.width > screenWidth) newX = screenWidth - bounds.width;
-    if (newY < 0) newY = 0;
-    if (newY + bounds.height > screenHeight)
-      newY = screenHeight - bounds.height;
-
     mainWindow.setBounds({
-      x: Math.round(newX),
-      y: Math.round(newY),
+      x: Math.round(bounds.x + x),
+      y: Math.round(bounds.y + y),
       width: bounds.width,
       height: bounds.height,
     });
-  } catch (error) {
-    // Log interno, no vale la pena molestar al usuario por un frame perdido
-    console.error("Error moviendo ventana:", error);
+  } catch (e) {
+    // Ignorar errores menores de movimiento
   }
 });
 // --- SISTEMA DE ERRORES CENTRALIZADO ---
