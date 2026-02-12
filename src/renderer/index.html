@@ -9,26 +9,34 @@
         background: transparent;
         overflow: hidden;
         display: flex;
-        justify_content: center;
+        justify-content: center;
         align-items: center;
         height: 100vh;
         -webkit-app-region: no-drag;
       }
 
-      /* El contenedor de Paco */
+      /* 1. El marco (donde vive Paco) */
       #paco-container {
-        position: relative;
-        /* AJUSTAR ESTO: Tamaño de UN solo frame de la rata */
         width: 32px;
         height: 32px;
-
-        /* Para que se vea pixel art nítido y no borroso al escalar */
+        overflow: hidden;
+        position: relative;
         image-rendering: pixelated;
-        transform: scale(
-          3
-        ); /* Lo agrandamos 3x para que se vea bien en pantallas modernas */
+        transform: scale(4);
+        border: 1px solid yellow;
+        background-color: rgba(255, 0, 0, 0.2);
       }
 
+      /* 2. La imagen adentro del marco */
+      .sprite {
+        width: 384px; /* Ancho total real de la imagen */
+        height: 128px; /* Alto total real de la imagen */
+        background-image: url("./assets/sprites.png");
+        background-repeat: no-repeat;
+        /* IMPORTANTE: Sacamos el background-size porcentual */
+        background-size: auto;
+        display: block;
+      }
       /* La imagen del Sprite */
       .sprite {
         width: 100%;
@@ -45,14 +53,21 @@
       .walk-anim {
         animation: walk-cycle 0.6s steps(3) infinite;
       }
+      /* --- ANIMACIONES --- */
+
+      /* Animación de Caminar (3 frames) */
+      .walk-anim {
+        animation: walk-cycle 0.5s steps(3) infinite;
+      }
 
       @keyframes walk-cycle {
+        /* Esto mueve la imagen de 0 a -96px (32*3) para mostrar los 3 frames de la animación */
         from {
-          background-position-x: 0px;
+          background-position-x: 0;
         }
         to {
           background-position-x: -96px;
-        } /* 32px * 3 frames = 96px (negativo para mover a la derecha) */
+        }
       }
       /* Efecto de comer: Vibración rápida */
       @keyframes munch {
@@ -75,14 +90,20 @@
 
       .eating {
         animation: munch 0.2s ease-in-out infinite;
+      } /* --- DIRECCIONES (Filas) --- */
+      /* Cambiamos la posición Y para elegir qué fila ver */
+      .facing-down {
+        background-position-y: 0;
       }
-      /* Direcciones (Filas del sprite sheet) */
-      /* Ajustar estos valores según el orden de tu imagen:
-           Fila 1 (0px): Frente/Abajo
-           Fila 2 (32px): Derecha
-           Fila 3 (64px): Izquierda
-           Fila 4 (96px): Arriba (Espalda)
-        */
+      .facing-right {
+        background-position-y: -32px;
+      }
+      .facing-left {
+        background-position-y: -64px;
+      }
+      .facing-up {
+        background-position-y: -96px;
+      }
       .facing-down {
         background-position-y: 0px;
       }
