@@ -10,15 +10,24 @@ Un tributo digital interactivo para inmortalizar a Paco. Esta aplicación de esc
 
 Este proyecto nace como un regalo. La idea es trascender el regalo físico habitual y utilizar la programación para crear algo "vivo". Paco ahora habita en el entorno digital, manteniendo su personalidad curiosa y su amor por el queso.
 
-## ✨ Funcionalidades (The MVP)
+## ✨ Características Actuales
 
-- **Overlay Transparente:** Paco vive "encima" de todas las ventanas (`Always on Top`), pero respeta tu espacio de trabajo.
-- **Comportamiento Autónomo:**
-  - **Idle:** Se queda quieto observando.
-  - **Roaming:** Camina aleatoriamente por los límites de tu pantalla.
-  - **Interacción:** Reacciona a los clics del mouse.
-- **Sistema de Sprites Dinámico:** Soporte para múltiples animaciones (Caminar, Comer, Dormir) mediante cambios de estado en CSS.
-- **Bajo Consumo:** Optimizado para no comerse la RAM (solo el queso).
+- **Mascota de Escritorio**: Paco vive en tu pantalla, sobre tus ventanas.
+- **Interacción**:
+  - **Click Izquierdo**: Dale amor a Paco ❤️ (Animación + Sonido).
+  - **Click Derecho (Menú)**:
+    - 🧀 **Dar Quesito**: Aliméntalo.
+    - 💤 **Mandar a Dormir**: Envíalo a descansar.
+    - 🔧 **Modo Debug**: Activa/desactiva panel de pruebas.
+    - **Despertar**: Si está durmiendo.
+  - **Arrastrar**: Muévelo a donde quieras.
+- **Sistema de Necesidades**:
+  - **Hambre**: Aparece una burbuja de pensamiento 💭 cuando tiene hambre.
+  - **Energía**: Se cansa si camina mucho. Si llega a 0, se duerme.
+  - **Sueño**: Duerme para recuperar energía rápidamente.
+- **Comportamiento**:
+  - Camina, se queda quieto (IDLE), duerme y come.
+  - **Modo Curioso**: Te mira si acercas el mouse.
 
 ### 📸 Galería
 
