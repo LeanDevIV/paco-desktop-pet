@@ -1,0 +1,1 @@
+"El proyecto utiliza Electron. El proceso Main crea una BrowserWindow con transparent: true, frame: false, alwaysOnTop: true. La comunicación entre procesos se hace vía ipcMain y ipcRenderer. Los errores se capturan globalmente y se muestran en la UI si es posible, o en un log de archivo si es fatal."

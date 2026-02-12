@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        overflow: hidden;
+        display: flex;
+        justify_content: center;
+        align-items: center;
+        height: 100vh;
+        -webkit-app-region: no-drag;
+      }
+
+      /* El contenedor de Paco */
+      #paco-container {
+        position: relative;
+        /* AJUSTAR ESTO: Tamaño de UN solo frame de la rata */
+        width: 32px;
+        height: 32px;
+
+        /* Para que se vea pixel art nítido y no borroso al escalar */
+        image-rendering: pixelated;
+        transform: scale(
+          3
+        ); /* Lo agrandamos 3x para que se vea bien en pantallas modernas */
+      }
+
+      /* La imagen del Sprite */
+      .sprite {
+        width: 100%;
+        height: 100%;
+        background-image: url("./assets/sprites.png");
+        background-repeat: no-repeat;
+
+        /* Asumiendo que el sprite sheet tiene 3 frames de ancho */
+        background-size: 300% 400%; /* 3 columnas (300%), 4 filas (400%) */
+      }
+
+      /* Animación de Caminar */
+      /* steps(3) significa que salta en 3 pasos, no desliza suave */
+      .walk-anim {
+        animation: walk-cycle 0.6s steps(3) infinite;
+      }
+
+      @keyframes walk-cycle {
+        from {
+          background-position-x: 0px;
+        }
+        to {
+          background-position-x: -96px;
+        } /* 32px * 3 frames = 96px (negativo para mover a la derecha) */
+      }
+      /* Efecto de comer: Vibración rápida */
+      @keyframes munch {
+        0% {
+          transform: scale(3) translateY(0);
+        }
+        25% {
+          transform: scale(3.2) translateY(-2px);
+        }
+        50% {
+          transform: scale(3) translateY(0);
+        }
+        75% {
+          transform: scale(3.2) translateY(-2px);
+        }
+        100% {
+          transform: scale(3) translateY(0);
+        }
+      }
+
+      .eating {
+        animation: munch 0.2s ease-in-out infinite;
+      }
+      /* Direcciones (Filas del sprite sheet) */
+      /* Ajustar estos valores según el orden de tu imagen:
+           Fila 1 (0px): Frente/Abajo
+           Fila 2 (32px): Derecha
+           Fila 3 (64px): Izquierda
+           Fila 4 (96px): Arriba (Espalda)
+        */
+      .facing-down {
+        background-position-y: 0px;
+      }
+      .facing-right {
+        background-position-y: -32px;
+      } /* Ajustar si tu frame mide distinto */
+      .facing-left {
+        background-position-y: -64px;
+      }
+      .facing-up {
+        background-position-y: -96px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="paco-container">
+      <div id="paco-sprite" class="sprite facing-down"></div>
+    </div>
+
+    <script>
+      const petBrain = require("./systems/PetBrain");
+      document.addEventListener("DOMContentLoaded", () => {
+        petBrain.init();
+        const paco = document.getElementById("paco-container");
+        paco.addEventListener("click", () => petBrain.interact());
+      });
+      const { ipcRenderer } = require("electron");
+      ipcRenderer.on("error-report", (e, err) => console.error(err));
+    </script>
+  </body>
+</html>
