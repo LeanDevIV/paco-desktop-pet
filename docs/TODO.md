@@ -12,18 +12,26 @@
 ## Comportamiento e Interacción
 
 - [ ] **Profundizar Comportamiento**:
-  - [ ] Estados de ánimo (Hambre, Sueño, Aburrimiento).
+  - [x] Estados de ánimo (Hambre, Sueño, Aburrimiento).
+    - [x] Hambre: Burbuja de pensamiento, comer queso, animación dedicada.
+    - [x] Sueño: Dormir (con regeneración rápida), despertar manual o automático.
+    - [x] Afecto: Interacción de amor (Click Izq), animación de corazones.
 
-  - [ ] **Modo Curioso**:
-    - [x] Mirar al cursor cuando está cerca.
-    - [x] Perseguir al cursor si se aleja.
+  - [x] **Modo Curioso**:
+    - [x] Mirar al cursor cuando está cerca (< 300px).
+    - [x] Quedarse quieto y mirar fijamente cuando está muy cerca (< 100px).
+    - [x] Perseguir al cursor (Desactivado por ahora para no molestar).
 
 - [ ] **Sonidos**:
   - [ ] Efectos de pasos.
   - [x] Sonido de comer.
   - [x] Chirridos aleatorios o al hacer clic.
 - [x] **Arrastrar y Soltar**: Permitir mover a Paco con el mouse si molesta.
-- [ ] **Menú Contextual**: Clic derecho para opciones (Cerrar, Reiniciar, Siempre visibles, Silenciar).
+- [x] **Menú Contextual**:
+  - [x] Dar de comer (Quesito).
+  - [x] Mandar a dormir.
+  - [x] Modo Debug (Toggle en bandeja de sistema).
+  - [x] Cerrar / Salir.
 
 ## Sistema y Configuración
 

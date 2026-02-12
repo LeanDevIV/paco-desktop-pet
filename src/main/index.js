@@ -1,4 +1,12 @@
-const { app, BrowserWindow, screen, ipcMain, Tray, Menu } = require("electron");
+const {
+  app,
+  BrowserWindow,
+  screen,
+  ipcMain,
+  Tray,
+  Menu,
+  MenuItem,
+} = require("electron");
 const path = require("path");
 const { PacoError, ErrorCategories } = require("../shared/PacoError");
 
@@ -21,6 +29,30 @@ const WINDOW_CONFIG = {
     // preload: path.join(__dirname, 'preload.js') // Descomentar cuando usemos preload
   },
 };
+
+ipcMain.handle("show-context-menu", (event) => {
+  const menu = new Menu();
+  menu.append(
+    new MenuItem({
+      label: "🧀 Dar Quesito (Feed)",
+      click: () => {
+        event.sender.send("feed-paco");
+      },
+    }),
+  );
+  menu.append(
+    new MenuItem({
+      label: "💤 Mandar a dormir (Sleep)",
+      click: () => {
+        event.sender.send("sleep-paco");
+      },
+    }),
+  );
+  menu.append(new MenuItem({ type: "separator" }));
+  menu.append(new MenuItem({ label: "Salir", role: "quit" }));
+
+  menu.popup({ window: BrowserWindow.fromWebContents(event.sender) });
+});
 
 function createPacoWindow() {
   try {
@@ -74,6 +106,16 @@ app.whenReady().then(() => {
     const contextMenu = Menu.buildFromTemplate([
       { label: "Despertar a Paco", click: () => mainWindow.show() },
       { label: "Dormir (Salir)", click: () => app.quit() },
+      { type: "separator" },
+      {
+        label: "Modo Debug",
+        type: "checkbox",
+        checked: false,
+        click: (item) => {
+          if (mainWindow)
+            mainWindow.webContents.send("toggle-debug", item.checked);
+        },
+      },
     ]);
     tray.setToolTip("Paco Virtual");
     tray.setContextMenu(contextMenu);

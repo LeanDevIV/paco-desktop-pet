@@ -12,8 +12,21 @@ class PetBrain {
     this.DECISION_RATE = 2500;
     this.MOVE_SPEED = 5;
 
-    this.DECISION_RATE = 2500;
-    this.MOVE_SPEED = 5;
+    // Vitals
+    this.vitals = {
+      hunger: 80, // 0-100 (0 = Starving)
+      energy: 100, // 0-100 (0 = Exhausted)
+      affection: 0, // 0-100 (100 = Love)
+    };
+
+    // Vitals Config (Changes per tick)
+    this.vitalsConfig = {
+      tickRate: 5000, // Update every 5s
+      hungerDecay: 2,
+      energyDecayWalk: 3,
+      energyRegenIdle: 2,
+      energyRegenSleep: 34, // 34 * 3 ticks (~15s) = 102 (Full)
+    };
 
     // Audio
     this.squeak1 = new Audio("./assets/Squeaking.mp3");
@@ -25,7 +38,10 @@ class PetBrain {
     this.isDragging = false;
     this.dragStartX = 0;
     this.dragStartY = 0;
+    this.dragStartX = 0;
+    this.dragStartY = 0;
     this.isMouseDown = false;
+    this.isBusy = false; // For blocking decisions during sequences
 
     // Cursor Awareness
     this.cursorGlobal = { x: 0, y: 0 };
@@ -50,6 +66,18 @@ class PetBrain {
     );
     document.addEventListener("mousemove", (e) => this.handleMouseMove(e));
     document.addEventListener("mouseup", (e) => this.handleMouseUp(e));
+
+    // Context Menu
+    window.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      ipcRenderer.invoke("show-context-menu");
+    });
+
+    // Listen for Feed command
+    ipcRenderer.on("feed-paco", () => this.feed());
+
+    // Listen for Sleep command
+    ipcRenderer.on("sleep-paco", () => this.goToSleep());
   }
 
   startLifeCycle() {
@@ -58,10 +86,76 @@ class PetBrain {
       this.DECISION_RATE,
     );
     this.timers.physics = setInterval(() => this.updatePhysics(), 50);
+    this.timers.vitals = setInterval(
+      () => this.updateVitals(),
+      this.vitalsConfig.tickRate,
+    );
+  }
+
+  updateVitals() {
+    // 1. Hunger Decay
+    this.vitals.hunger = Math.max(
+      0,
+      this.vitals.hunger - this.vitalsConfig.hungerDecay,
+    );
+
+    // 2. Energy Logic
+    if (this.visualState === "SLEEPING") {
+      this.vitals.energy = Math.min(
+        100,
+        this.vitals.energy + this.vitalsConfig.energyRegenSleep,
+      );
+    } else if (this.movementMode === "WALKING") {
+      this.vitals.energy = Math.max(
+        0,
+        this.vitals.energy - this.vitalsConfig.energyDecayWalk,
+      );
+    } else {
+      // Idle
+      this.vitals.energy = Math.min(
+        100,
+        this.vitals.energy + this.vitalsConfig.energyRegenIdle,
+      );
+    }
+
+    // Low Energy Speed Modifier
+    if (this.vitals.energy < 20) {
+      this.MOVE_SPEED = 2; // Tired walk
+    } else {
+      this.MOVE_SPEED = 5; // Normal speed
+    }
+
+    // Logging (Debug)
+    console.log(
+      `stats: 🧀${this.vitals.hunger} ⚡${this.vitals.energy} ❤️${this.vitals.affection}`,
+    );
+
+    // Check Critical States
+    if (this.vitals.energy <= 0 && this.visualState !== "SLEEPING") {
+      console.log("Passed out from exhaustion!");
+      this.setVisualState("SLEEPING");
+      this.movementMode = "IDLE";
+    }
+
+    // Check Hunger
+    const thoughtBubble = document.getElementById("thought-bubble");
+    if (this.vitals.hunger < 30) {
+      if (thoughtBubble) thoughtBubble.classList.add("visible");
+      // Force chase/beg behavior if we implement it later
+    } else {
+      if (thoughtBubble) thoughtBubble.classList.remove("visible");
+    }
   }
 
   makeDecision() {
-    if (this.visualState === "EATING" || this.isDragging) return;
+    // blocked by actions
+    if (this.visualState === "EATING" || this.isDragging || this.isBusy) return;
+
+    // blocked by sleep (unless fully rested)
+    if (this.visualState === "SLEEPING" && this.vitals.energy < 100) return;
+
+    // If sleeping and energy is full, wake up naturally?
+    // Let's allow the random logic below to potentially pick WALKING/IDLE, which effectively wakes him.
 
     const rand = Math.random();
 
@@ -82,32 +176,21 @@ class PetBrain {
     );
 
     // STOP & STARE override in decision loop (prevent random walking when close)
-    if (dist < 50) {
-      this.setVisualState("IDLE");
-      this.movementMode = "IDLE";
+    // If nearby (within 100px), force IDLE and face cursor (behavior handled in checkWatchBehavior)
+    if (dist < 100) {
+      if (this.visualState === "WALKING") {
+        this.setVisualState("IDLE");
+        this.movementMode = "IDLE";
+      }
       return;
     }
 
-    // If nearby but not too close (Chase)
-    if (dist > 100 && dist < 400) {
-      this.setVisualState("WALKING");
-      this.movementMode = "WALKING";
-      // Calculate direction normal
-      const dx = this.cursorGlobal.x - pacoX;
-      const dy = this.cursorGlobal.y - pacoY;
-      // Normalize
-      this.direction = {
-        x: dx / dist,
-        y: dy / dist,
-      };
-      return; // Override other decisions
-    }
+    // Chase Mode (Curious) - DISABLED
+    // We removed the chase logic to prevent him from following the cursor.
+    // Instead, he just wanders randomly unless close.
 
-    // 10% Sleep, 40% Walk, 50% Idle
-    if (rand < 0.1) {
-      this.setVisualState("SLEEPING");
-      this.movementMode = "IDLE";
-    } else if (rand < 0.5) {
+    // 50% Walk, 50% Idle
+    if (rand < 0.5) {
       this.setVisualState("WALKING");
       this.movementMode = "WALKING";
       this.pickRandomDirection();
@@ -132,7 +215,10 @@ class PetBrain {
       "state-eating",
       "state-eating",
       "state-sleeping",
+      "state-eating",
+      "state-sleeping",
       "state-held",
+      "state-love",
     );
 
     // Add current state class
@@ -202,36 +288,49 @@ class PetBrain {
   }
 
   interact() {
-    console.log("Interact: Munching!");
-
-    // Play Squeak (Spam-able)
-    this.playSqueak(this.squeak1);
-
-    // Force reset of eating state to replay animation if clicked again
-    if (this.visualState === "EATING") {
-      this.sprite.classList.remove("state-eating");
-      void this.sprite.offsetWidth; // Trigger reflow
-      this.sprite.classList.add("state-eating"); // Re-add manually since setVisualState will exit early
-    } else {
-      this.setVisualState("EATING");
+    // Wake up if sleeping
+    if (this.visualState === "SLEEPING") {
+      console.log("Interact: Waking up!");
+      this.setVisualState("IDLE");
+      this.movementMode = "IDLE";
+      this.playSqueak(this.squeak3); // Groggy squeak?
+      return;
     }
 
-    // Clear any existing reset timer if spamming
-    if (this.timers.eating) clearTimeout(this.timers.eating);
+    if (this.isBusy) return; // Prevent spamming interruptions
+    this.isBusy = true;
 
-    this.timers.eating = setTimeout(() => {
-      if (this.visualState === "EATING") {
-        // Revert visual state to match the current movement mode
-        this.setVisualState(
-          this.movementMode === "WALKING" ? "WALKING" : "IDLE",
-        );
-      }
-    }, 1500); // 1.5s duration
+    // 1. Initial Pause (IDLE) - 0.5s
+    this.setVisualState("IDLE");
+    this.movementMode = "IDLE";
+
+    setTimeout(() => {
+      // 2. Love State - 1.2s
+      console.log("Interact: Love! ❤️");
+      this.setVisualState("LOVE");
+
+      // Increase Affection
+      this.vitals.affection = Math.min(100, this.vitals.affection + 5);
+
+      // Play Squeak
+      this.playSqueak(this.squeak1);
+
+      setTimeout(() => {
+        // 3. Post-Love Pause (IDLE) - 0.5s
+        this.setVisualState("IDLE");
+
+        setTimeout(() => {
+          // 4. Resume Normal Behavior
+          this.isBusy = false;
+        }, 500);
+      }, 1200); // Love animation duration
+    }, 500); // Initial delay
   }
 
-  // --- Drag & Drop Logic ---
+  // ... Drag Logic ...
 
   handleMouseDown(e) {
+    if (e.button !== 0) return; // Only Left Click
     this.isMouseDown = true;
     this.dragStartX = e.screenX;
     this.dragStartY = e.screenY;
@@ -273,6 +372,12 @@ class PetBrain {
   }
 
   handleMouseUp(e) {
+    if (e.button !== 0) {
+      this.isMouseDown = false;
+      this.isDragging = false;
+      return;
+    }
+
     if (this.isDragging) {
       this.endDrag();
     } else if (this.isMouseDown) {
@@ -298,6 +403,36 @@ class PetBrain {
     this.sprite.style.transform = "";
     // Return to IDLE or strictly previous state? Let's go IDLE to be safe/reset.
     this.setVisualState("IDLE");
+    this.movementMode = "IDLE";
+  }
+
+  feed() {
+    console.log("Nom nom nom! 🧀");
+    this.vitals.hunger = Math.min(100, this.vitals.hunger + 50);
+
+    // Explicitly set EATING state (decoupled from interact/Love)
+    this.playSqueak(this.squeak1);
+
+    if (this.visualState === "EATING") {
+      this.sprite.classList.remove("state-eating");
+      void this.sprite.offsetWidth;
+      this.sprite.classList.add("state-eating");
+    } else {
+      this.setVisualState("EATING");
+      this.movementMode = "IDLE"; // Stop moving to eat!
+    }
+
+    if (this.timers.interaction) clearTimeout(this.timers.interaction);
+    this.timers.interaction = setTimeout(() => {
+      if (this.visualState === "EATING") {
+        this.setVisualState("IDLE"); // Always return to IDLE after eating
+      }
+    }, 1500);
+  }
+
+  goToSleep() {
+    console.log("Going to sleep...");
+    this.setVisualState("SLEEPING");
     this.movementMode = "IDLE";
   }
 
@@ -337,37 +472,26 @@ class PetBrain {
       this.cursorGlobal.y - pacoY,
     );
 
-    if (dist < 50) {
+    if (dist < 100) {
       // STOP & STARE (Very close)
       // Force IDLE state
-      if (this.visualState !== "IDLE") {
+      if (this.visualState === "WALKING") {
         this.setVisualState("IDLE");
         this.movementMode = "IDLE";
       }
-      // Face Down (Look at screen/user)
-      this.direction = { x: 0, y: 0 };
-      this.applyDirectionClasses(); // Will default to facing-down
-      return;
-    }
 
-    if (dist < 300) {
-      // Look at cursor (Watch)
+      // Face at cursor (Watch)
       const dx = this.cursorGlobal.x - pacoX;
       const dy = this.cursorGlobal.y - pacoY;
 
-      // Simple 4-way direction for sprite
-      // We need to set this.direction so applyDirectionClasses works
-      // But we don't want to MOVE if we are IDLE.
-      // So we just update the visual classes directly or update direction but ensure movement code checks state?
-      // updatePhysics checks movementMode === "WALKING". So updating `this.direction` is safe for IDLE state.
-
-      // Determine dominant axis
+      // Determine dominant axis to face cursor
       if (Math.abs(dx) > Math.abs(dy)) {
         this.direction = { x: Math.sign(dx), y: 0 };
       } else {
         this.direction = { x: 0, y: Math.sign(dy) };
       }
       this.applyDirectionClasses();
+      return;
     }
   }
 }
