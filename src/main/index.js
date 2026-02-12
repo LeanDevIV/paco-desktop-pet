@@ -77,6 +77,12 @@ app.whenReady().then(() => {
     ]);
     tray.setToolTip("Paco Virtual");
     tray.setContextMenu(contextMenu);
+    // Start tracking cursor for "Curious Mode"
+    setInterval(() => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      const point = screen.getCursorScreenPoint();
+      mainWindow.webContents.send("cursor-update", point);
+    }, 100);
   } catch (e) {
     console.log("No se pudo cargar el icono del tray, usando default.");
   }
@@ -90,22 +96,29 @@ app.on("window-all-closed", () => {
 
 // Escuchar petición de movimiento desde el cerebro
 // Escuchar la orden de movimiento desde el cerebro
+// Escuchar la orden de movimiento desde el cerebro (Walking)
 ipcMain.on("paco-move", (event, { x, y }) => {
   if (!mainWindow) return;
   try {
     const bounds = mainWindow.getBounds();
-    const { height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
+    const { width: screenWidth, height: screenHeight } =
+      screen.getPrimaryDisplay().workAreaSize;
 
     // Calculate new positions
     let newX = bounds.x + x;
     let newY = bounds.y + y;
 
-    // Clamp Y to bottom 150px (e.g. screenHeight - 150 to screenHeight - height)
-    const minY = screenHeight - 150;
-    const maxY = screenHeight - bounds.height;
+    // Clamp to screen edges (Relaxed clamping)
+    // Keep at least part of window visible? Or fully inside?
+    // Let's keep fully inside for walking logic
+    if (newX < 0) newX = 0;
+    if (newX > screenWidth - bounds.width) newX = screenWidth - bounds.width;
 
-    if (newY < minY) newY = minY;
-    if (newY > maxY) newY = maxY;
+    // Removed strict bottom 150px clamping. Now allows full height walking if logic permits.
+    // If PetBrain only walks horizontally, this Y check is less critical but good for safety.
+    if (newY < 0) newY = 0;
+    if (newY > screenHeight - bounds.height)
+      newY = screenHeight - bounds.height;
 
     mainWindow.setBounds({
       x: Math.round(newX),
@@ -115,6 +128,30 @@ ipcMain.on("paco-move", (event, { x, y }) => {
     });
   } catch (e) {
     // Ignorar errores menores de movimiento
+  }
+});
+
+// Escuchar evento de arrastre desde el usuario
+ipcMain.on("paco-drag", (event, { x, y }) => {
+  if (!mainWindow) return;
+  try {
+    const bounds = mainWindow.getBounds();
+    // x and y are deltas from renderer (screenX diffs)
+
+    let newX = bounds.x + x;
+    let newY = bounds.y + y;
+
+    // Optional: Add clamping here too if we want to prevent dragging off-screen
+    // For now, let's allow free dragging but maybe keep logic simple
+
+    mainWindow.setBounds({
+      x: Math.round(newX),
+      y: Math.round(newY),
+      width: bounds.width,
+      height: bounds.height,
+    });
+  } catch (e) {
+    console.error("Drag error:", e);
   }
 });
 // --- SISTEMA DE ERRORES CENTRALIZADO ---

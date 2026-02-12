@@ -20,7 +20,9 @@
         /* Default size */
         width: 48px;
         height: 48px;
-        overflow: hidden;
+        width: 48px;
+        height: 48px;
+        /* overflow: hidden; Removed to allow error bubble to pop out */
         position: relative;
         image-rendering: pixelated;
         transform: scale(3);
@@ -28,6 +30,7 @@
         transition:
           width 0.2s,
           height 0.2s; /* Smooth visual transition */
+        border: 1px solid red; /* DEBUGGING */
       }
 
       /* 2. La imagen adentro (El Sprite) */
@@ -48,25 +51,118 @@
         background-size: 300% 400%;
       }
 
-      /* EATING (Nueva hoja) */
+      /* EATING (New Animation) */
       .state-eating {
-        background-image: url("./assets/eat.png");
-        /* Tira horizontal de 4 frames (4 * 100% width?) */
-        /* Si el container es 48x48 y la imagen es 192x48 */
-        /* background-size: 400% 100% (4 columnas, 1 fila) */
-        background-size: 400% 100%;
-        animation: eat-cycle 0.5s steps(4) infinite;
+        background-image: url("./assets/eating.png");
+        /* Standard grid: 3 cols, 4 rows (like sprites.png) */
+        background-size: 300% 400%;
+        background-position-y: 0; /* Row 0 */
+
+        /* Two animations: one for frames, one for vibration at the end */
+        /* Duration 1.5s */
+        animation:
+          eat-sprite 1.5s steps(1) forwards,
+          eat-vibrate 1.5s linear forwards;
       }
 
       /* SLEEPING (Nueva hoja) */
       .state-sleeping {
         background-image: url("./assets/sleep.png");
-        background-size: 100% 100%;
-        width: 32px !important;
-        height: 32px !important;
-        /* Center in container if container is larger? Or rely on JS to resize container? */
-        /* For now, force sprite size. Container might have empty space if not resized. */
-        margin: 8px; /* Center 32px in 48px container roughly (48-32)/2 = 8 */
+        /* Same grid as sprites.png: 3 cols, 4 rows */
+        background-size: 300% 400%;
+        /* Row 1 (Index 1) -> -48px */
+        background-position-y: -48px;
+        width: 48px !important;
+        height: 48px !important;
+        margin: 0; /* Align with container */
+        animation: sleep-cycle 1s steps(2) infinite;
+      }
+
+      /* HELD (Single sprite) */
+      .state-held {
+        background-image: url("./assets/held.png");
+        /* Adjusted focus: Scaling 222x256 sprite sheet to fit 48px height (Scale ~0.75) */
+        /* Frame is ~74x64. Scaled to ~55.5x48. Centered X (-4px). */
+        background-size: 167px 192px;
+        width: 48px !important;
+        height: 48px !important;
+        margin: 0;
+        background-position: -12px -10px;
+        transition: transform 0.1s ease-out; /* Smooth physics sway */
+      }
+
+      /* --- ERROR BUBBLE --- */
+      #error-bubble {
+        position: absolute;
+        bottom: 100%; /* Just above the sprite */
+        left: 50%;
+        transform: translateX(-50%);
+        background: #fff;
+        border: 1px solid #ff0000;
+        color: #ff0000;
+        padding: 2px 4px;
+        border-radius: 4px;
+        font-family: sans-serif;
+        font-size: 6px; /* Small because of 3x scale */
+        white-space: nowrap;
+        z-index: 999;
+        display: none; /* Hidden by default */
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        flex-direction: row;
+        align-items: center;
+        gap: 2px;
+      }
+
+      #error-bubble.visible {
+        display: flex;
+        animation: pop-in 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+
+      #close-error {
+        cursor: pointer;
+        font-weight: bold;
+        color: #333;
+        margin-left: 2px;
+        font-size: 8px;
+        line-height: 1;
+      }
+
+      #close-error:hover {
+        color: red;
+      }
+
+      /* Tail of the bubble */
+      #error-bubble::after {
+        content: "";
+        position: absolute;
+        bottom: -3px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-width: 3px 3px 0;
+        border-style: solid;
+        border-color: #ff0000 transparent transparent transparent;
+      }
+      #error-bubble::before {
+        content: "";
+        position: absolute;
+        bottom: -2px; /* overlap border */
+        left: 50%;
+        transform: translateX(-50%);
+        border-width: 3px 3px 0;
+        border-style: solid;
+        border-color: #fff transparent transparent transparent;
+        z-index: 1;
+      }
+
+      @keyframes pop-in {
+        from {
+          transform: translateX(-50%) scale(0);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(-50%) scale(1);
+          opacity: 1;
+        }
       }
 
       /* --- ANIMACIONES --- */
@@ -85,13 +181,71 @@
         }
       }
 
-      @keyframes eat-cycle {
+      @keyframes eat-sprite {
+        0% {
+          background-position-x: 0;
+        } /* Frame 0 */
+        20% {
+          background-position-x: -48px;
+        } /* Frame 1 */
+        40% {
+          background-position-x: 0;
+        } /* Frame 0 */
+        60% {
+          background-position-x: -48px;
+        } /* Frame 1 */
+        80% {
+          background-position-x: -96px;
+        } /* Frame 2 (Final) */
+        100% {
+          background-position-x: -96px;
+        }
+      }
+
+      @keyframes eat-vibrate {
+        0%,
+        80% {
+          transform: translate(0, 0);
+        }
+        82% {
+          transform: translate(1px, 0);
+        }
+        84% {
+          transform: translate(-1px, 0);
+        }
+        86% {
+          transform: translate(0, 1px);
+        }
+        88% {
+          transform: translate(0, -1px);
+        }
+        90% {
+          transform: translate(1px, 1px);
+        }
+        92% {
+          transform: translate(-1px, -1px);
+        }
+        94% {
+          transform: translate(1px, -1px);
+        }
+        96% {
+          transform: translate(-1px, 1px);
+        }
+        98% {
+          transform: translate(0, 0);
+        }
+        100% {
+          transform: translate(0, 0);
+        }
+      }
+
+      @keyframes sleep-cycle {
         from {
           background-position-x: 0;
         }
         to {
-          background-position-x: -192px;
-        } /* 4 frames * 48px */
+          background-position-x: -96px;
+        } /* 2 frames * 48px */
       }
 
       /* --- DIRECCIONES (Solo para Walking/Idle) --- */
@@ -112,18 +266,90 @@
   </head>
   <body>
     <div id="paco-container">
+      <div id="error-bubble">
+        <span id="error-message">!</span>
+        <span id="close-error">×</span>
+      </div>
       <div id="paco-sprite" class="sprite facing-down"></div>
     </div>
+
+    <!-- DEBUG PANEL -->
+    <div
+      id="debug-panel"
+      style="
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        z-index: 20000; /* Ultra high z-index */
+        display: flex;
+        flex-direction: column;
+        background: #ff0000; /* Bright red temp background to FIND IT */
+        border: 2px solid white;
+        padding: 8px;
+        border-radius: 8px;
+        cursor: pointer;
+        opacity: 1 !important;
+      "
+    >
+      <button onclick="triggerError('Info: Just saying hi')">Info</button>
+      <button onclick="triggerError('Warning: Low battery?')">Warn</button>
+      <button onclick="triggerError('Critical: FEED ME')">Crit</button>
+    </div>
+    <style>
+      #debug-panel button {
+        font-size: 10px;
+        cursor: pointer;
+        margin-bottom: 2px;
+        background: white;
+        border: none;
+        padding: 2px 5px;
+      }
+      #debug-panel button:hover {
+        background: #ddd;
+      }
+    </style>
 
     <script>
       const petBrain = require("./systems/PetBrain");
       document.addEventListener("DOMContentLoaded", () => {
         petBrain.init();
-        const paco = document.getElementById("paco-container");
-        paco.addEventListener("click", () => petBrain.interact());
+        // Click listener removed to avoid conflict with Drag logic in PetBrain.js
+        // const paco = document.getElementById("paco-container");
+        // paco.addEventListener("click", () => petBrain.interact());
       });
       const { ipcRenderer } = require("electron");
-      ipcRenderer.on("error-report", (e, err) => console.error(err));
+
+      const errorBubble = document.getElementById("error-bubble");
+      const errorMessage = document.getElementById("error-message");
+      const closeError = document.getElementById("close-error");
+      let errorTimeout;
+
+      function showError(msg) {
+        errorMessage.textContent = msg || "Error";
+        errorBubble.classList.add("visible");
+
+        // Clear previous timeout
+        if (errorTimeout) clearTimeout(errorTimeout);
+
+        // Auto hide after 2s
+        errorTimeout = setTimeout(() => {
+          hideError();
+        }, 2000);
+      }
+
+      function hideError() {
+        errorBubble.classList.remove("visible");
+      }
+
+      closeError.addEventListener("click", (e) => {
+        e.stopPropagation(); // Don't trigger click/drag on paco
+        hideError();
+      });
+
+      ipcRenderer.on("error-report", (e, err) => {
+        console.error(err);
+        showError(typeof err === "string" ? err : err.message || "Error");
+      });
     </script>
   </body>
 </html>

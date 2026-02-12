@@ -3,22 +3,26 @@
 ## Sprites y Visuales
 
 - [ ] **Incorporar Sprites Reales**:
-  - [ ] `sleep.png`: Animación de dormir (hacerse bolita).
-  - [ ] `eat.png`: Animación de comer (tira de frames).
-  - [ ] `squeak.png`: Animación de chirrido/habla ("SQUEAKY").
-- [ ] **Animaciones SQUEAKY**: Sincronizar animación de boca/movimiento con sonido.
-- [ ] **Cartel Visual de Error**: Notificación visual (burbuja o ícono) cuando ocurre un error interno.
+  - [x] `sleep.png`: Animación de dormir (hacerse bolita).
+  - [x] `eat.png`: Animación de comer (tira de frames).
+  - [x] `squeak.png`: Animación de chirrido/habla ("SQUEAKY").
+- [x] **Animaciones SQUEAKY**: Sincronizar animación de boca/movimiento con sonido.
+- [x] **Cartel Visual de Error**: Notificación visual (burbuja o ícono) cuando ocurre un error interno.
 
 ## Comportamiento e Interacción
 
 - [ ] **Profundizar Comportamiento**:
   - [ ] Estados de ánimo (Hambre, Sueño, Aburrimiento).
-  - [ ] Reacciones al mouse (huir, acercarse).
+
+  - [ ] **Modo Curioso**:
+    - [x] Mirar al cursor cuando está cerca.
+    - [x] Perseguir al cursor si se aleja.
+
 - [ ] **Sonidos**:
   - [ ] Efectos de pasos.
-  - [ ] Sonido de comer.
-  - [ ] Chirridos aleatorios o al hacer clic.
-- [ ] **Arrastrar y Soltar**: Permitir mover a Paco con el mouse si molesta.
+  - [x] Sonido de comer.
+  - [x] Chirridos aleatorios o al hacer clic.
+- [x] **Arrastrar y Soltar**: Permitir mover a Paco con el mouse si molesta.
 - [ ] **Menú Contextual**: Clic derecho para opciones (Cerrar, Reiniciar, Siempre visibles, Silenciar).
 
 ## Sistema y Configuración
