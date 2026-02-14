@@ -1,3 +1,6 @@
+const Vitals = require("./Vitals");
+const VitalsConfig = require("./VitalsConfig");
+
 class PetState {
   constructor(vitalsConfig = {}) {
     this.visualState = "IDLE";
@@ -5,53 +8,42 @@ class PetState {
     this.direction = { x: 0, y: 0 };
     this.isBusy = false;
 
-    this.vitals = {
-      hunger: 80,
-      energy: 100,
-      affection: 0,
-    };
-
-    this.vitalsConfig = {
-      tickRate: 5000,
-      hungerDecay: 2,
-      energyDecayWalk: 3,
-      energyRegenIdle: 2,
-      energyRegenSleep: 34,
-      ...vitalsConfig,
-    };
+    // Use the new Vitals system
+    this.vitalsSystem = new Vitals();
+    // Expose stats object for compatibility with PetBrain/UI
+    this.vitals = this.vitalsSystem.getStats();
+    // Expose config for PetBrain
+    this.vitalsConfig = VitalsConfig;
   }
 
   updateVitals() {
-    // Lógica de vitals (sin UI)
-    this.vitals.hunger = Math.max(
-      0,
-      this.vitals.hunger - this.vitalsConfig.hungerDecay,
-    );
+    // Delegate biological logic to Vitals system
+    this.vitals = this.vitalsSystem.tick(this.visualState, this.movementMode);
 
-    if (this.visualState === "SLEEPING") {
-      this.vitals.energy = Math.min(
-        100,
-        this.vitals.energy + this.vitalsConfig.energyRegenSleep,
-      );
-    } else if (this.movementMode === "WALKING") {
-      this.vitals.energy = Math.max(
-        0,
-        this.vitals.energy - this.vitalsConfig.energyDecayWalk,
-      );
-    } else {
-      this.vitals.energy = Math.min(
-        100,
-        this.vitals.energy + this.vitalsConfig.energyRegenIdle,
-      );
+    // Check if we need to force state changes based on vitals
+    if (this.vitalsSystem.isExhausted && this.visualState !== "SLEEPING") {
+      this.sleep();
     }
 
-    return this.vitals; // Retorna para que el controlador reaccione
+    return this.vitals; // Returns { hunger, energy, affection }
   }
 
   makeDecision(cursorDistance) {
     // Retorna qué hacer NEXT, sin efectos secundarios
-    if (this.visualState === "EATING" || this.isBusy) return null;
-    if (this.visualState === "SLEEPING" && this.vitals.energy < 100)
+    if (
+      this.visualState === "EATING" ||
+      this.visualState === "HELD" ||
+      this.visualState === "LOVE" ||
+      this.isBusy
+    )
+      return null;
+
+    // If sleeping, only wake up if energetic enough?
+    // For now, if sleeping and not fully rested, stay asleep
+    if (
+      this.visualState === "SLEEPING" &&
+      this.vitals.energy < VitalsConfig.MAX_ENERGY
+    )
       return null;
 
     if (cursorDistance < 100) {
@@ -79,7 +71,9 @@ class PetState {
   }
 
   feed(amount = 50) {
-    this.vitals.hunger = Math.min(100, this.vitals.hunger + amount);
+    this.vitalsSystem.feed(amount);
+    // Vitals will update on next tick or we could update local ref now
+    this.vitals = this.vitalsSystem.getStats();
     return this.vitals;
   }
 
@@ -95,7 +89,9 @@ class PetState {
 
   setVisualState(newState) {
     if (this.visualState !== newState) {
+      const oldState = this.visualState;
       this.visualState = newState;
+      console.log(`PACO STATE: ${oldState} > ${newState}`);
       return true; // Indica que cambió
     }
     return false;

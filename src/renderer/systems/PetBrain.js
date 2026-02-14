@@ -49,7 +49,7 @@ class PetBrain {
     this.timers.physics = setInterval(() => this.updatePhysics(), 50);
     this.timers.vitals = setInterval(
       () => this.updateVitals(),
-      this.state.vitalsConfig.tickRate,
+      this.state.vitalsConfig.TICK_RATE, // Accessing exposed config
     );
 
     ipcRenderer.on("cursor-update", (event, point) => {

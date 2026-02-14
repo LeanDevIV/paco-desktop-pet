@@ -108,6 +108,15 @@ app.whenReady().then(() => {
       { label: "Dormir (Salir)", click: () => app.quit() },
       { type: "separator" },
       {
+        label: "Ver Necesidades",
+        type: "checkbox",
+        checked: false,
+        click: (item) => {
+          if (mainWindow)
+            mainWindow.webContents.send("toggle-vitals", item.checked);
+        },
+      },
+      {
         label: "Modo Debug",
         type: "checkbox",
         checked: false,
