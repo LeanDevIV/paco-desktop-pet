@@ -29,10 +29,29 @@ Este proyecto nace como un regalo. La idea es trascender el regalo físico habit
   - Camina, se queda quieto (IDLE), duerme y come.
   - **Modo Curioso**: Te mira si acercas el mouse.
 
-### 📸 Galería
+### 📸 Galería de Sprites
 
+#### Estados de Paco
+
+**Caminando / Idle**
+![Paco Caminando](src/renderer/assets/sprites.png)
+_Sprite sheet completo - Paco en diferentes estados de movimiento_
+
+**Comiendo Quesito** 🧀
+![Paco Comiendo](src/renderer/assets/eating.png)
+_Paco disfrutando su quesito favorito_
+
+**Durmiendo** 💤
 ![Paco Durmiendo](src/renderer/assets/sleep.png)
 _Paco tomando una siesta_
+
+**Siendo Sostenido**
+![Paco Sostenido](src/renderer/assets/held.png)
+_Paco cuando lo arrastras_
+
+**Recibiendo Amor** ❤️
+![Paco con Amor](src/renderer/assets/love.png)
+_Animación cuando le das clic izquierdo_
 
 ## 🛠️ Stack Tecnológico
 
