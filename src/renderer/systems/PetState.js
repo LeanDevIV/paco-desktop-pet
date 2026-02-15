@@ -1,3 +1,8 @@
+const Vitals = require("./Vitals");
+const VitalsConfig = require("./VitalsConfig");
+const PetStorage = require("./PetStorage");
+const LevelSystem = require("./LevelSystem");
+
 class PetState {
   constructor(vitalsConfig = {}) {
     this.visualState = "IDLE";
@@ -5,58 +10,98 @@ class PetState {
     this.direction = { x: 0, y: 0 };
     this.isBusy = false;
 
-    this.vitals = {
-      hunger: 80,
-      energy: 100,
-      affection: 0,
-    };
+    // Subsystems
+    this.storage = new PetStorage();
+    this.vitalsSystem = new Vitals();
 
-    this.vitalsConfig = {
-      tickRate: 5000,
-      hungerDecay: 2,
-      energyDecayWalk: 3,
-      energyRegenIdle: 2,
-      energyRegenSleep: 34,
-      ...vitalsConfig,
-    };
+    // Load Data
+    const savedData = this.storage.load();
+    if (savedData) {
+      console.log("📂 Loaded Save:", savedData);
+
+      // Apply offline decay
+      const decay = this.storage.calculateOfflineDecay(savedData.timestamp);
+
+      // Restore vitals with decay
+      this.vitalsSystem.hunger = Math.max(
+        0,
+        savedData.vitals.hunger - decay.hunger,
+      );
+      this.vitalsSystem.energy = Math.max(
+        0,
+        savedData.vitals.energy - decay.energy,
+      );
+      this.vitalsSystem.affection = Math.max(
+        0,
+        savedData.vitals.affection - decay.affection,
+      );
+
+      // Restore Level/XP
+      this.levelSystem = new LevelSystem(savedData.xp || 0);
+    } else {
+      console.log("⭐️ New Game Started");
+      this.levelSystem = new LevelSystem(0);
+    }
+
+    // Expose stats object for compatibility with PetBrain/UI
+    this.vitals = this.vitalsSystem.getStats();
+    // Copy level info to vitals object for UI access
+    Object.assign(this.vitals, this.levelSystem.getStats());
+
+    this.vitalsConfig = VitalsConfig;
   }
 
   updateVitals() {
-    // Lógica de vitals (sin UI)
-    this.vitals.hunger = Math.max(
-      0,
-      this.vitals.hunger - this.vitalsConfig.hungerDecay,
-    );
+    // Delegate biological logic to Vitals system
+    this.vitals = this.vitalsSystem.tick(this.visualState, this.movementMode);
 
-    if (this.visualState === "SLEEPING") {
-      this.vitals.energy = Math.min(
-        100,
-        this.vitals.energy + this.vitalsConfig.energyRegenSleep,
-      );
-    } else if (this.movementMode === "WALKING") {
-      this.vitals.energy = Math.max(
-        0,
-        this.vitals.energy - this.vitalsConfig.energyDecayWalk,
-      );
-    } else {
-      this.vitals.energy = Math.min(
-        100,
-        this.vitals.energy + this.vitalsConfig.energyRegenIdle,
-      );
+    // XP Logic: Gain XP if happy (Average stats > 50%)
+    const avgStats =
+      (this.vitals.hunger + this.vitals.energy + this.vitals.affection) / 3;
+    if (avgStats > 50) {
+      this.levelSystem.addXP(0.5); // Slow progression
     }
 
-    return this.vitals; // Retorna para que el controlador reaccione
+    // Update exposed object with latest level info
+    Object.assign(this.vitals, this.levelSystem.getStats());
+
+    // Auto-Save every ~30 ticks (approx 1 min if tick is 2s)
+    if (Math.random() < 0.05) {
+      this.save();
+    }
+
+    return this.vitals; // Returns { hunger, energy, affection, xp, level, ... }
   }
 
-  makeDecision(cursorDistance) {
+  save() {
+    const data = {
+      vitals: this.vitalsSystem.getStats(),
+      xp: this.levelSystem.xp,
+      level: this.levelSystem.level,
+    };
+    this.storage.save(data);
+  }
+
+  makeDecision() {
     // Retorna qué hacer NEXT, sin efectos secundarios
-    if (this.visualState === "EATING" || this.isBusy) return null;
-    if (this.visualState === "SLEEPING" && this.vitals.energy < 100)
+    if (
+      this.visualState === "EATING" ||
+      this.visualState === "HELD" ||
+      this.visualState === "LOVE" ||
+      this.isBusy
+    )
       return null;
 
-    if (cursorDistance < 100) {
-      return { action: "STOP_AND_STARE" };
-    }
+    // Critical State Override: If energy or hunger is 0, do nothing (PetBrain handles corner logic)
+    if (this.vitals.energy <= 0 || this.vitals.hunger <= 0) return null;
+
+    // If sleeping, only wake up if energetic enough?
+    // For now, if sleeping and not fully rested, stay asleep
+    if (
+      this.visualState === "SLEEPING" &&
+      this.vitals.energy < VitalsConfig.MAX_ENERGY
+    )
+      return null;
 
     const rand = Math.random();
     if (rand < 0.5) {
@@ -79,7 +124,9 @@ class PetState {
   }
 
   feed(amount = 50) {
-    this.vitals.hunger = Math.min(100, this.vitals.hunger + amount);
+    this.vitalsSystem.feed(amount);
+    // Vitals will update on next tick or we could update local ref now
+    this.vitals = this.vitalsSystem.getStats();
     return this.vitals;
   }
 
@@ -93,12 +140,20 @@ class PetState {
     this.movementMode = "IDLE";
   }
 
-  setVisualState(newState) {
-    if (this.visualState !== newState) {
-      this.visualState = newState;
-      return true; // Indica que cambió
+  increaseAffection(amount) {
+    this.vitalsSystem.affection = Math.min(
+      100,
+      this.vitalsSystem.affection + amount,
+    );
+    // Update exposed stats immediately
+    Object.assign(this.vitals, this.vitalsSystem.getStats());
+  }
+
+  setVisualState(state) {
+    if (this.visualState !== state) {
+      console.log(`PACO STATE: ${this.visualState} > ${state}`);
+      this.visualState = state;
     }
-    return false;
   }
 }
 

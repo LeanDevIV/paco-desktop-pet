@@ -20,8 +20,6 @@
         /* Default size */
         width: 48px;
         height: 48px;
-        width: 48px;
-        height: 48px;
         /* overflow: hidden; Removed to allow error bubble to pop out */
         position: relative;
         image-rendering: pixelated;
@@ -30,7 +28,90 @@
         transition:
           width 0.2s,
           height 0.2s; /* Smooth visual transition */
-        border: 1px solid red; /* DEBUGGING */
+
+        /* User request: give more margin top to avoid UI overlap */
+        margin-top: 32px; /* Pushes pet down from top edge */
+      }
+
+      /* Debug class toggled via JS */
+      #paco-container.debug-border {
+        border: 1px solid red;
+      }
+
+      /* --- VITALS BAR --- */
+      #vitals-bar {
+        position: fixed; /* Fixed relative to window */
+        top: 10px; /* Near top edge */
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255, 255, 255, 0.95);
+        padding: 4px;
+        border-radius: 6px;
+        border: 1px solid #333;
+        display: none; /* Hidden by default */
+        flex-direction: column;
+        gap: 2px;
+        min-width: 60px;
+        z-index: 10000; /* Above everything */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        font-family: monospace;
+        font-size: 10px;
+      }
+      .state-held {
+        background-image: url("./assets/held.png");
+        /* Debug background to verify element existence */
+        /* background-color: rgba(255, 0, 0, 0.5); */
+
+        /* New Sprite: 192x64px (3 frames of 64x64px) */
+        width: 64px !important;
+        height: 64px !important;
+
+        /* Ensure background fits 64px height, let width be auto (192px) */
+        background-size: 192px 64px;
+        background-position: 0 0;
+        background-repeat: no-repeat;
+
+        /* Center in 48px container:
+           Diff: 64 - 48 = 16. Shift -8px both axes.
+        */
+        margin-left: -8px;
+        margin-top: -8px;
+
+        animation: held-cycle 3s step-end infinite;
+        transition: transform 0.1s ease-out;
+      }
+      .stat-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .stat-icon {
+        font-size: 12px;
+        width: 14px;
+        text-align: center;
+        line-height: 1;
+      }
+      .stat-track {
+        flex-grow: 1;
+        height: 6px;
+        background: #eee;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      .stat-fill {
+        height: 100%;
+        width: 50%;
+        transition: width 0.3s ease-out;
+      }
+      #bar-hunger {
+        background: #ff9800;
+      }
+      #bar-energy {
+        background: #2196f3;
+      }
+      #bar-affection {
+        background: #e91e63;
       }
 
       /* 2. La imagen adentro (El Sprite) */
@@ -52,57 +133,86 @@
       }
 
       /* EATING (New Animation) */
+      /* EATING (New Animation from eating.png - 64px frames) */
       .state-eating {
         background-image: url("./assets/eating.png");
-        /* Standard grid: 3 cols, 4 rows (like sprites.png) */
-        background-size: 300% 400%;
-        background-position-y: 0; /* Row 0 */
+        width: 64px !important;
+        height: 64px !important;
+        background-size: 192px 64px;
+        background-position: 0 0;
+        background-repeat: no-repeat;
 
-        /* Two animations: one for frames, one for vibration at the end */
-        /* Duration 1.5s */
+        /* Center in 48px container: (64-48)/2 = 8. Offset -8px */
+        margin-left: -8px;
+        margin-top: -8px;
+
         animation:
-          eat-sprite 1.5s steps(1) forwards,
-          eat-vibrate 1.5s linear forwards;
+          eat-sprite 1.5s steps(1) infinite,
+          eat-vibrate 1.5s linear infinite;
       }
 
       /* SLEEPING (Nueva hoja) */
+      /* SLEEPING (New leaf from sleep.png) */
+      /* SLEEPING (New leaf from sleep.png) */
       .state-sleeping {
         background-image: url("./assets/sleep.png");
-        /* Same grid as sprites.png: 3 cols, 4 rows */
-        background-size: 300% 400%;
-        /* Row 1 (Index 1) -> -48px */
-        background-position-y: -48px;
-        width: 48px !important;
-        height: 48px !important;
-        margin: 0; /* Align with container */
-        animation: sleep-cycle 1s steps(2) infinite;
+        /* New Sprite: 192x64px (3 frames of 64x64px) */
+        width: 64px !important;
+        height: 64px !important;
+        background-size: 192px 64px;
+        background-position: 0 0;
+        background-repeat: no-repeat;
+
+        /* Center in 48px container: (64-48)/2 = 8. Offset -8px */
+        margin-left: -8px;
+        margin-top: -8px;
+
+        /* 3 frames cycle (0, 1, 2) */
+        animation: sleep-cycle 1.5s steps(1) infinite;
       }
 
       /* HELD (Single sprite) */
+      /* HELD (Single sprite from held.png) */
       .state-held {
         background-image: url("./assets/held.png");
-        /* Adjusted focus: Scaling 222x256 sprite sheet to fit 48px height (Scale ~0.75) */
-        /* Frame is ~74x64. Scaled to ~55.5x48. Centered X (-4px). */
-        background-size: 167px 192px;
+        /* Resized to 48px to match other sprites and avoid "zoom" effect */
         width: 48px !important;
         height: 48px !important;
+
+        /* Original is 192x64. Scale to 144x48 (0.75x) to fit container */
+        background-size: 144px 48px;
+        background-position: 0 0;
+        background-repeat: no-repeat;
+
+        /* No negative margins needed as it fits perfectly now */
         margin: 0;
-        background-position: -12px -10px;
-        transition: transform 0.1s ease-out; /* Smooth physics sway */
-        background-position: -12px -10px;
-        transition: transform 0.1s ease-out; /* Smooth physics sway */
+
+        /* Custom Cycle: Idle (0) for 2s, then Frame 1 -> Frame 2 -> Frame 0 */
+        animation: held-cycle 3s step-end infinite;
+        transition: transform 0.1s ease-out;
       }
 
       /* LOVE (Click Interaction) */
+      /* LOVE (Click Interaction from love.png) */
       .state-love {
-        background-image: url("./assets/love.png");
-        /* Scaling: 222px -> 178px (0.8x) to fit 60px sprite into 48px container */
-        background-size: 178px 205px;
-        background-position-y: 8px; /* Center vertically */
+        background-image: url("./assets/love-remade.png");
+        /* New Sprite: 192x64px (3 frames of 64x64px) */
+        width: 64px !important;
+        height: 64px !important;
+        background-size: 192px 64px; /* Explicit size */
+        background-position: 0 0;
+        background-repeat: no-repeat;
+
+        /* Center in 48px container:
+           Diff: 64 - 48 = 16. Shift -8px both axes.
+        */
+        margin-left: -8px;
+        margin-top: -8px;
+
         /* Animation: Frame sequence 0-1-2-1-2 + Shake */
         animation:
           love-sequence 1.2s steps(1) infinite,
-          eat-vibrate 1.2s linear infinite; /* Reuse eating shake */
+          eat-vibrate 1.2s linear infinite;
       }
 
       /* --- ERROR BUBBLE --- */
@@ -179,53 +289,45 @@
         }
       }
 
-      /* --- THOUGHT BUBBLE (Hunger) --- */
+      /* --- THOUGHT BUBBLE (Hunger/Sleep) --- */
       #thought-bubble {
-        position: absolute;
-        bottom: 32px; /* Position relative to 48px container */
-        right: 0px;
-        background: #fff;
-        border: 1px solid #333; /* Thinner border */
-        border-radius: 50%;
-        padding: 2px;
-        min-width: 12px; /* Small size */
-        min-height: 12px;
-        display: none; /* Hidden by default */
+        position: fixed; /* Fixed to window instead of absolute to avoid parent offset issues */
+        top: 40px;
+        left: 20px;
+
+        /* Image based bubble */
+        background-image: url("./assets/bubble-tought.png");
+        width: 64px;
+        height: 64px;
+        box-sizing: border-box;
+        background-size: contain;
+        background-repeat: no-repeat;
+
+        display: none;
         justify-content: center;
         align-items: center;
-        font-size: 8px; /* Small text */
-        z-index: 998;
-        box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.2);
-        animation: float-bubble 2s ease-in-out infinite;
+
+        /* Text styling for Emoji inside */
+        font-size: 16px;
+        padding-bottom: 12px;
+        padding-left: 2px;
+
+        z-index: 9999; /* Higher than almost everything */
+        animation: float-bubble 3s ease-in-out infinite;
       }
 
       #thought-bubble.visible {
         display: flex;
+        /* Simple pop-in */
+        animation:
+          pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+          float-bubble 3s ease-in-out infinite;
       }
 
-      #thought-bubble::before {
-        content: "";
-        position: absolute;
-        bottom: -4px;
-        left: 20%;
-        width: 6px;
-        height: 6px;
-        background: #fff;
-        border-radius: 50%;
-        border: 2px solid #333;
-        z-index: 1;
-      }
+      /* Remove old CSS triangle tails */
+      #thought-bubble::before,
       #thought-bubble::after {
-        content: "";
-        position: absolute;
-        bottom: -10px;
-        left: 10%;
-        width: 4px;
-        height: 4px;
-        background: #fff;
-        border-radius: 50%;
-        border: 2px solid #333;
-        z-index: 1;
+        display: none;
       }
 
       @keyframes float-bubble {
@@ -234,11 +336,16 @@
           transform: translateY(0);
         }
         50% {
-          transform: translateY(-3px);
+          transform: translateY(-5px);
         }
       }
 
       /* --- ANIMACIONES --- */
+
+      /* Idle */
+      .state-idle {
+        animation: none !important;
+      }
 
       /* Caminar */
       .state-walking {
@@ -259,19 +366,19 @@
           background-position-x: 0;
         } /* Frame 0 */
         20% {
-          background-position-x: -48px;
+          background-position-x: -64px;
         } /* Frame 1 */
         40% {
           background-position-x: 0;
         } /* Frame 0 */
         60% {
-          background-position-x: -48px;
+          background-position-x: -64px;
         } /* Frame 1 */
         80% {
-          background-position-x: -96px;
+          background-position-x: -128px;
         } /* Frame 2 (Final) */
         100% {
-          background-position-x: -96px;
+          background-position-x: -128px;
         }
       }
 
@@ -313,12 +420,18 @@
       }
 
       @keyframes sleep-cycle {
-        from {
+        0% {
           background-position-x: 0;
-        }
-        to {
-          background-position-x: -96px;
-        } /* 2 frames * 48px */
+        } /* Frame 0 */
+        33% {
+          background-position-x: -64px;
+        } /* Frame 1 */
+        66% {
+          background-position-x: -128px;
+        } /* Frame 2 */
+        100% {
+          background-position-x: 0;
+        } /* Loop back */
       }
 
       @keyframes love-sequence {
@@ -331,15 +444,24 @@
         40% {
           background-position-x: -128px;
         } /* Frame 2 */
-        60% {
-          background-position-x: -64px;
-        } /* Frame 1 */
-        80% {
-          background-position-x: -128px;
-        } /* Frame 2 */
         100% {
           background-position-x: 0;
         } /* Reset */
+      }
+
+      @keyframes held-cycle {
+        0% {
+          background-position-x: 0;
+        } /* Frame 0 (Idle) */
+        66% {
+          background-position-x: -48px;
+        } /* Frame 1 (Start Wiggle at ~2s) */
+        83% {
+          background-position-x: -96px;
+        } /* Frame 2 (End Wiggle) */
+        100% {
+          background-position-x: 0;
+        } /* Loop back */
       }
 
       /* --- DIRECCIONES (Solo para Walking/Idle) --- */
@@ -359,12 +481,36 @@
     </style>
   </head>
   <body>
+    <!-- 1. Vitals Bar (Moved OUTSIDE scaled container) -->
+    <div id="vitals-bar">
+      <div class="level-indicator">Lvl <span id="level-value">1</span></div>
+      <div class="stat-row">
+        <span class="stat-icon">🧀</span>
+        <div class="stat-track">
+          <div id="bar-hunger" class="stat-fill"></div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <span class="stat-icon">⚡</span>
+        <div class="stat-track">
+          <div id="bar-energy" class="stat-fill"></div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <span class="stat-icon">❤️</span>
+        <div class="stat-track">
+          <div id="bar-affection" class="stat-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Paco Container (Scaled) -->
+    <div id="thought-bubble">🧀</div>
     <div id="paco-container">
       <div id="error-bubble">
         <span id="error-message">!</span>
         <span id="close-error">×</span>
       </div>
-      <div id="thought-bubble">🧀</div>
       <div id="paco-sprite" class="sprite facing-down"></div>
     </div>
 
@@ -392,7 +538,7 @@
       <div style="height: 5px"></div>
       <button
         onclick="
-          petBrain.vitals.hunger = 10;
+          petBrain.state.vitalsSystem.hunger = 10;
           petBrain.updateVitals();
         "
       >
@@ -400,7 +546,7 @@
       </button>
       <button
         onclick="
-          petBrain.vitals.energy = 10;
+          petBrain.state.vitalsSystem.energy = 10;
           petBrain.updateVitals();
         "
       >
@@ -431,6 +577,41 @@
         // paco.addEventListener("click", () => petBrain.interact());
       });
       const { ipcRenderer } = require("electron");
+
+      // --- UI REFERENCES ---
+      const vitalsBar = document.getElementById("vitals-bar");
+      const barHunger = document.getElementById("bar-hunger");
+      const barEnergy = document.getElementById("bar-energy");
+      const barAffection = document.getElementById("bar-affection");
+      const levelValue = document.getElementById("level-value");
+
+      // --- VITALS HOOK ---
+      // Hook into petBrain.updateVitals to update the UI bars every tick
+      const originalUpdateVitals = petBrain.updateVitals.bind(petBrain);
+      petBrain.updateVitals = () => {
+        originalUpdateVitals();
+
+        // Update simple bars if visible
+        if (vitalsBar.style.display !== "none") {
+          const v = petBrain.state.vitals; // { hunger, energy, affection, level, xp }
+          if (v) {
+            barHunger.style.width = `${v.hunger}%`;
+            barEnergy.style.width = `${v.energy}%`;
+            barAffection.style.width = `${v.affection}%`;
+
+            if (v.level) {
+              levelValue.textContent = v.level;
+            }
+          }
+        }
+      };
+
+      // Toggle Vitals Bar
+      ipcRenderer.on("toggle-vitals", (e, show) => {
+        vitalsBar.style.display = show ? "flex" : "none";
+        // Force an update immediately so it's not empty until next tick
+        petBrain.updateVitals();
+      });
 
       const errorBubble = document.getElementById("error-bubble");
       const errorMessage = document.getElementById("error-message");
@@ -464,10 +645,18 @@
         showError(typeof err === "string" ? err : err.message || "Error");
       });
 
-      // Toggle Debug Panel
+      // Toggle Debug Panel & Border
       ipcRenderer.on("toggle-debug", (e, isDebug) => {
         const panel = document.getElementById("debug-panel");
+        const container = document.getElementById("paco-container");
+
         panel.style.display = isDebug ? "flex" : "none";
+
+        if (isDebug) {
+          container.classList.add("debug-border");
+        } else {
+          container.classList.remove("debug-border");
+        }
       });
     </script>
   </body>

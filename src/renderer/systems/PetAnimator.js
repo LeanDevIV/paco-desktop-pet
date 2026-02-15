@@ -11,6 +11,10 @@ class PetAnimator {
       "state-sleeping",
       "state-held",
       "state-love",
+      "facing-up",
+      "facing-down",
+      "facing-left",
+      "facing-right",
     );
     this.sprite.classList.add(`state-${state.toLowerCase()}`);
   }
