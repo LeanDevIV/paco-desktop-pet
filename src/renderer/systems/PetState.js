@@ -1,5 +1,7 @@
 const Vitals = require("./Vitals");
 const VitalsConfig = require("./VitalsConfig");
+const PetStorage = require("./PetStorage");
+const LevelSystem = require("./LevelSystem");
 
 class PetState {
   constructor(vitalsConfig = {}) {
@@ -8,11 +10,44 @@ class PetState {
     this.direction = { x: 0, y: 0 };
     this.isBusy = false;
 
-    // Use the new Vitals system
+    // Subsystems
+    this.storage = new PetStorage();
     this.vitalsSystem = new Vitals();
+
+    // Load Data
+    const savedData = this.storage.load();
+    if (savedData) {
+      console.log("📂 Loaded Save:", savedData);
+
+      // Apply offline decay
+      const decay = this.storage.calculateOfflineDecay(savedData.timestamp);
+
+      // Restore vitals with decay
+      this.vitalsSystem.hunger = Math.max(
+        0,
+        savedData.vitals.hunger - decay.hunger,
+      );
+      this.vitalsSystem.energy = Math.max(
+        0,
+        savedData.vitals.energy - decay.energy,
+      );
+      this.vitalsSystem.affection = Math.max(
+        0,
+        savedData.vitals.affection - decay.affection,
+      );
+
+      // Restore Level/XP
+      this.levelSystem = new LevelSystem(savedData.xp || 0);
+    } else {
+      console.log("⭐️ New Game Started");
+      this.levelSystem = new LevelSystem(0);
+    }
+
     // Expose stats object for compatibility with PetBrain/UI
     this.vitals = this.vitalsSystem.getStats();
-    // Expose config for PetBrain
+    // Copy level info to vitals object for UI access
+    Object.assign(this.vitals, this.levelSystem.getStats());
+
     this.vitalsConfig = VitalsConfig;
   }
 
@@ -20,15 +55,34 @@ class PetState {
     // Delegate biological logic to Vitals system
     this.vitals = this.vitalsSystem.tick(this.visualState, this.movementMode);
 
-    // Check if we need to force state changes based on vitals
-    if (this.vitalsSystem.isExhausted && this.visualState !== "SLEEPING") {
-      this.sleep();
+    // XP Logic: Gain XP if happy (Average stats > 50%)
+    const avgStats =
+      (this.vitals.hunger + this.vitals.energy + this.vitals.affection) / 3;
+    if (avgStats > 50) {
+      this.levelSystem.addXP(0.5); // Slow progression
     }
 
-    return this.vitals; // Returns { hunger, energy, affection }
+    // Update exposed object with latest level info
+    Object.assign(this.vitals, this.levelSystem.getStats());
+
+    // Auto-Save every ~30 ticks (approx 1 min if tick is 2s)
+    if (Math.random() < 0.05) {
+      this.save();
+    }
+
+    return this.vitals; // Returns { hunger, energy, affection, xp, level, ... }
   }
 
-  makeDecision(cursorDistance) {
+  save() {
+    const data = {
+      vitals: this.vitalsSystem.getStats(),
+      xp: this.levelSystem.xp,
+      level: this.levelSystem.level,
+    };
+    this.storage.save(data);
+  }
+
+  makeDecision() {
     // Retorna qué hacer NEXT, sin efectos secundarios
     if (
       this.visualState === "EATING" ||
@@ -38,6 +92,9 @@ class PetState {
     )
       return null;
 
+    // Critical State Override: If energy or hunger is 0, do nothing (PetBrain handles corner logic)
+    if (this.vitals.energy <= 0 || this.vitals.hunger <= 0) return null;
+
     // If sleeping, only wake up if energetic enough?
     // For now, if sleeping and not fully rested, stay asleep
     if (
@@ -45,10 +102,6 @@ class PetState {
       this.vitals.energy < VitalsConfig.MAX_ENERGY
     )
       return null;
-
-    if (cursorDistance < 100) {
-      return { action: "STOP_AND_STARE" };
-    }
 
     const rand = Math.random();
     if (rand < 0.5) {
@@ -87,14 +140,20 @@ class PetState {
     this.movementMode = "IDLE";
   }
 
-  setVisualState(newState) {
-    if (this.visualState !== newState) {
-      const oldState = this.visualState;
-      this.visualState = newState;
-      console.log(`PACO STATE: ${oldState} > ${newState}`);
-      return true; // Indica que cambió
+  increaseAffection(amount) {
+    this.vitalsSystem.affection = Math.min(
+      100,
+      this.vitalsSystem.affection + amount,
+    );
+    // Update exposed stats immediately
+    Object.assign(this.vitals, this.vitalsSystem.getStats());
+  }
+
+  setVisualState(state) {
+    if (this.visualState !== state) {
+      console.log(`PACO STATE: ${this.visualState} > ${state}`);
+      this.visualState = state;
     }
-    return false;
   }
 }
 

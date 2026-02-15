@@ -51,22 +51,10 @@ class PetBrain {
       () => this.updateVitals(),
       this.state.vitalsConfig.TICK_RATE, // Accessing exposed config
     );
-
-    ipcRenderer.on("cursor-update", (event, point) => {
-      this.cursorGlobal = point;
-      this.checkWatchBehavior();
-    });
   }
 
   makeDecision() {
-    const pacoX = window.screenX + 24;
-    const pacoY = window.screenY + 24;
-    const dist = Math.hypot(
-      this.cursorGlobal.x - pacoX,
-      this.cursorGlobal.y - pacoY,
-    );
-
-    const decision = this.state.makeDecision(dist);
+    const decision = this.state.makeDecision();
     if (!decision) return;
 
     if (Math.random() < 0.1) this.audio.playRandomSqueak();
@@ -101,24 +89,59 @@ class PetBrain {
       this.physics.setSpeed(5);
     }
 
-    // Check critical states
-    if (vitals.energy <= 0 && this.state.visualState !== "SLEEPING") {
-      this.state.sleep();
-      this.physics.setMovementMode("IDLE");
-      this.updateVisuals();
+    // Log stats only if they change (simple check)
+    const statsStr = `stats: 🧀${vitals.hunger} ⚡${vitals.energy} ❤️${vitals.affection}`;
+    if (this._lastStatsLog !== statsStr) {
+      console.log(statsStr);
+      this._lastStatsLog = statsStr;
     }
 
-    // Show hunger bubble
+    // Show thought bubble based on needs (run BEFORE critical check)
     const thoughtBubble = document.getElementById("thought-bubble");
     if (vitals.hunger < 30) {
+      thoughtBubble.textContent = "🧀"; // Cheese
+      thoughtBubble?.classList.add("visible");
+    } else if (vitals.energy < 20) {
+      thoughtBubble.textContent = "💤"; // Sleep
       thoughtBubble?.classList.add("visible");
     } else {
       thoughtBubble?.classList.remove("visible");
     }
 
-    console.log(
-      `stats: 🧀${vitals.hunger} ⚡${vitals.energy} ❤️${vitals.affection}`,
-    );
+    // Check critical states (Hunger or Energy <= 0)
+    if (vitals.energy <= 0 || vitals.hunger <= 0) {
+      // Force movement to bottom-right corner
+      // We do NOT check for SLEEPING here, we wake him/move him regardless.
+
+      // Target: Bottom-Right corner, allowing for 300x300 window size
+      // We target screen.width - 300 (window width) - margin
+      const windowSize = 300;
+      const targetX = window.screen.width - windowSize;
+      const targetY = window.screen.height - windowSize - 40; // A bit higher to clear taskbar
+
+      // Current position (Top-Left of window)
+      const currentX = window.screenX;
+      const currentY = window.screenY;
+
+      const dx = targetX - currentX;
+      const dy = targetY - currentY;
+
+      if (Math.abs(dx) > 20 || Math.abs(dy) > 20) {
+        // Move towards corner
+        this.state.movementMode = "WALKING";
+        this.state.visualState = "WALKING";
+        this.state.direction = { x: Math.sign(dx), y: Math.sign(dy) };
+      } else {
+        // Arrived at corner, stay IDLE
+        this.state.movementMode = "IDLE";
+        this.state.visualState = "IDLE";
+        this.state.direction = { x: 0, y: 0 }; // Face front
+      }
+
+      this.updateVisuals();
+      // Prevent normal behavior
+      return;
+    }
   }
 
   updatePhysics() {
@@ -138,6 +161,9 @@ class PetBrain {
   }
 
   interact() {
+    // Prevent interaction if in critical state (0 energy/hunger)
+    if (this.state.vitals.energy <= 0 || this.state.vitals.hunger <= 0) return;
+
     if (this.state.visualState === "SLEEPING") {
       this.state.wakeUp();
       this.audio.playSqueak("squeak3");
@@ -153,10 +179,7 @@ class PetBrain {
 
     setTimeout(() => {
       this.state.setVisualState("LOVE");
-      this.state.vitals.affection = Math.min(
-        100,
-        this.state.vitals.affection + 5,
-      );
+      this.state.increaseAffection(5);
       this.animator.setVisualState("LOVE");
       this.audio.playSqueak("squeak1");
 
@@ -173,6 +196,10 @@ class PetBrain {
 
   startDrag() {
     this.state.setVisualState("HELD");
+    // CRITICAL: Stop physics movement immediately
+    this.state.movementMode = "IDLE";
+    this.physics.setMovementMode("IDLE");
+
     this.animator.setVisualState("HELD");
     this.animator.setRotation(0);
   }
@@ -202,36 +229,6 @@ class PetBrain {
       this.state.setVisualState("IDLE");
       this.animator.setVisualState("IDLE");
     }, 1500);
-  }
-
-  checkWatchBehavior() {
-    if (
-      this.state.visualState === "SLEEPING" ||
-      this.state.visualState === "EATING" ||
-      this.state.visualState === "HELD" ||
-      this.input.isDragging
-    )
-      return;
-
-    const pacoX = window.screenX + 24;
-    const pacoY = window.screenY + 24;
-    const dist = Math.hypot(
-      this.cursorGlobal.x - pacoX,
-      this.cursorGlobal.y - pacoY,
-    );
-
-    if (dist < 100) {
-      const dx = this.cursorGlobal.x - pacoX;
-      const dy = this.cursorGlobal.y - pacoY;
-
-      if (Math.abs(dx) > Math.abs(dy)) {
-        this.state.direction = { x: Math.sign(dx), y: 0 };
-      } else {
-        this.state.direction = { x: 0, y: Math.sign(dy) };
-      }
-
-      this.animator.setDirection(this.state.direction);
-    }
   }
 
   setupIPC() {

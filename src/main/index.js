@@ -16,8 +16,8 @@ let tray = null;
 
 // Configuración de la ventana para que sea una mascota de escritorio
 const WINDOW_CONFIG = {
-  width: 200, // Tamaño inicial de Paco
-  height: 200,
+  width: 300, // Augmented size to fit bubble on side
+  height: 300,
   frame: false, // Sin bordes de Windows
   transparent: true, // Fondo invisible
   alwaysOnTop: true, // Siempre encima de otras ventanas
@@ -61,8 +61,8 @@ function createPacoWindow() {
 
     mainWindow = new BrowserWindow({
       ...WINDOW_CONFIG,
-      x: screenWidth - 250, // Posición inicial: esquina inferior derecha
-      y: screenHeight - 250,
+      x: screenWidth - 350, // Posición inicial: esquina inferior derecha
+      y: screenHeight - 350,
     });
 
     mainWindow.webContents.openDevTools({ mode: "detach" });
@@ -205,6 +205,12 @@ ipcMain.on("paco-drag", (event, { x, y }) => {
     console.error("Drag error:", e);
   }
 });
+
+// --- PERSISTENCIA ---
+ipcMain.on("get-user-data-path", (event) => {
+  event.returnValue = app.getPath("userData");
+});
+
 // --- SISTEMA DE ERRORES CENTRALIZADO ---
 
 function handleFatalError(error) {
